@@ -1,2 +1,3 @@
 # p2pg
-Peer to peer game.
+
+A simple peer to peer game.
