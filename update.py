@@ -120,7 +120,7 @@ def install(version: str, v_info=None, chunk_size=None):
         archive.close()
 
 
-if __name__ == '__main__':
+def main():
     from argparse import ArgumentParser
     parser = ArgumentParser(description='Update p2pg.')
     parser.add_argument('-c', '--chunk-size', dest='chunk_size',
@@ -148,3 +148,7 @@ if __name__ == '__main__':
                 print('Already up to date (%s)' % wanted)
             else:
                 install(wanted, info, args.chunk_size)
+
+
+if __name__ == '__main__':
+    main()
