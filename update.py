@@ -89,7 +89,7 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
         print('Downloading version (%s)' % version)
         new_version = get(url, stream=True)
         file = TemporaryFile(buffering=0)
-        total = int(new_version.headers['content-length'])
+        total = int(new_version.headers['content-length']) or 1
         place = 0
         for chunk in new_version.iter_content(chunk_size):
             file.write(chunk)
@@ -106,6 +106,7 @@ def remove_folder(tar_file):
     while tar_info:
         tar_info.name = tar_info.name.partition('/')[2]
         if tar_info.name:
+            print('Extracting %s' % tar_info.name)
             yield tar_info
         tar_info = tar_file.next()
 
