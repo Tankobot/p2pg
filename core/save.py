@@ -1,10 +1,11 @@
-import abc
+"""Module of Save class and utilities."""
+
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from threading import Lock
 from collections import namedtuple
 
 
-home = Path('save')
 Info = namedtuple('Info', 'offset size converter')
 
 
@@ -12,7 +13,7 @@ class Error(Exception):
     pass
 
 
-class FixedMeta(abc.ABCMeta):
+class FixedMeta(ABCMeta):
     def __new__(mcs, *args, s_type=NotImplemented):
         cls = super().__new__(mcs, *args)
         if s_type is not NotImplemented:
@@ -33,20 +34,20 @@ class FixedMeta(abc.ABCMeta):
     _supported_types = {}
 
 
-class BaseConverter(metaclass=FixedMeta):
+class ConverterBase(metaclass=FixedMeta):
     def __init__(self, size: int):
         self._size = size
 
-    @abc.abstractmethod
+    @abstractmethod
     def to_bytes(self, obj) -> bytes:
         """Convert object to bytes."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def from_bytes(self, b):
         """Convert bytes to correct object."""
 
 
-class BytesConverter(BaseConverter, s_type=bytes):
+class BytesConverter(ConverterBase, s_type=bytes):
     def to_bytes(self, obj) -> bytes:
         return obj
 
@@ -55,18 +56,25 @@ class BytesConverter(BaseConverter, s_type=bytes):
 
 
 class Save:
-    """Save objects to a file in static length sections.
+    """Store objects in static length sections.
+
+    Save objects efficiently partition storage for fixed size objects.
+
+    Example:
+        >>> s = Save('example')
+        >>> s.register('key', 4)(b'byte')
+        >>> s['key']  # b'byte'
+        >>> s['key'] = b'4chr'
+        >>> s['key']  # b'4chr'
+        >>> s.close()
 
     Supported dictionary methods include:
         __getitem__
         __setitem__
 
-    Planned support:
-        Thread-safe instances
-
     """
 
-    def __init__(self, name: str, flag='r+b', binding=None):
+    def __init__(self, name: str, flag='r+b'):
         """Initialize a Save object.
 
         The name argument will automatically be preceded by the `home` module variable. It will also automatically be
@@ -76,7 +84,7 @@ class Save:
         :param flag: the flags to use when opening the file (see `open`)
 
         """
-        path = home / name
+        path = Path(name)
         path = path.with_suffix('.sve')
         if not path.exists():
             self._existed = False
@@ -89,23 +97,39 @@ class Save:
         self._file = path.open(flag, buffering=0)
         self._is_closed = False
 
+        # set current offset for registering
         self._offset = 0
-        self._binding = binding.copy() if binding else {}
+        self._binding = {}
         self._cache = {}
 
-        # implement thread safe locking later
+        # implement thread safe locking
         self._lock = Lock()
 
     def register(self, name: str, size: int, s_type=bytes, *args, **kwargs):
+        """Register section.
+
+        Sections are limited to one type and require a converter to function correctly.
+
+        :param name: name of the section (dictionary key)
+        :param size: size in bytes of the section
+        :param s_type: object type to store in the section
+        :param args: extra args to pass to the converter
+        :param kwargs: extra kwargs to pass to the converter
+
+        """
+
         converter = FixedMeta.get_converter(s_type, size, *args, **kwargs)
         self._binding[name] = Info(self._offset,
                                    size,
                                    converter)
         if not self._existed:
-            with self._lock:
-                self._file.seek(self._offset)
-                self._file.write(bytes(size))
+            self._file.seek(self._offset)
+            self._file.write(bytes(size))
         self._offset += size
+
+        def hook(default):
+            self.default(name, default)
+        return hook
 
     @property
     def binding(self):
@@ -118,36 +142,61 @@ class Save:
     def info(self, key):
         return self._binding[key]
 
-    def __getitem__(self, item):
-        info = self._binding[item]
+    def __getitem__(self, key):
         try:
-            return self._cache[item]
+            info = self._binding[key]
         except KeyError:
-            with self._lock:
-                self._file.seek(info.offset)
-                data = self._file.read(info.size)
+            raise Error('no binding for key %r' % key) from None
+        try:
+            return self._cache[key]
+        except KeyError:
+            self._file.seek(info.offset)
+            data = self._file.read(info.size)
             obj = info.converter.from_bytes(data)
-            self._cache[item] = obj
+            self._cache[key] = obj
             return obj
 
     def __setitem__(self, key, obj):
-        info = self._binding[key]
+        try:
+            info = self._binding[key]
+        except KeyError:
+            raise Error('no binding for key %r' % key) from None
         data = info.converter.to_bytes(obj)
 
         if len(data) != info.size:
-            raise Error('invalid data size')
-        with self._lock:
-            self._file.seek(info.offset)
-            self._file.write(data)
+            raise Error('data size != %s' % info.size)
+        self._file.seek(info.offset)
+        self._file.write(data)
         self._cache[key] = obj
 
+    def default(self, key, obj):
+        if not self._existed:
+            self[key] = obj
+
     def __enter__(self):
+        """Enable with syntax for save.
+
+        The with syntax also enables thread-safe use.
+
+        Example:
+            >>> s = Save('example')
+            >>> s.register('key', 4)(b'byte')
+            >>> with s:
+            >>>     s  # <Save at 0x_>
+            >>>     s['key']  # b'byte'
+            >>>     s['key'] = b'bits'
+            >>> s  # <closed Save at 0x_>
+
+        """
+
+        self._lock.acquire()
         self.open()
         return self
 
     def __exit__(self, *args):
         del args
         self.close()
+        self._lock.release()
 
     def open(self):
         if self.is_closed:
@@ -169,7 +218,7 @@ class Save:
             return '<%s at %s>' % info
 
 
-class IntConverter(BaseConverter, s_type=int):
+class IntConverter(ConverterBase, s_type=int):
     def __init__(self, size: int, endian='little', *, signed=False):
         super().__init__(size)
         self._endian = endian
@@ -184,7 +233,7 @@ class IntConverter(BaseConverter, s_type=int):
         return int.from_bytes(b, self._endian, signed=self._signed)
 
 
-class StrConverter(BaseConverter, s_type=str):
+class StrConverter(ConverterBase, s_type=str):
     def __init__(self, size: int, encoding='utf-8', errors='strict'):
         super().__init__(size)
         self._encoding = encoding

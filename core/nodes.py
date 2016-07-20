@@ -207,3 +207,10 @@ class NodePath:
     def remove(self, n=-1):
         key = self.path.pop(n)
         self.bag.remove(key)
+
+
+class NodeDB:
+    """Store nodes in a database."""
+
+    def __init__(self, name: str, flag='c'):
+        pass
