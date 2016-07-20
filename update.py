@@ -70,48 +70,63 @@ def grab_version(latest=False):
     else:
         url = 'https://tankobot.github.io' \
               '/p2pg/version.json'
-    print('Getting version info...')
+    print('Getting version information...')
     return get(url).json()
 
 
-def download_version(version: str = None, chunk_size=128):
+def download_version(version: str = None, v_info=None, chunk_size=128):
     version = version or v['get-version']
     if version == 'latest':
-        v_info = grab_version(True)
+        v_info = v_info or grab_version(True)
         n_sig = v_info['current']
         url = 'https://github.com/Tankobot' \
               '/p2pg/archive/master.tar.gz'
     else:
-        v_info = grab_version()
+        v_info = v_info or grab_version()
         n_sig = v_info[version][0]
         url = v_info[version][1]
     if v['current'] != n_sig:
         print('Downloading version (%s)' % version)
         new_version = get(url, stream=True)
         file = TemporaryFile(buffering=0)
-        total = new_version.headers['content-size']
+        total = int(new_version.headers['content-length'])
         place = 0
         for chunk in new_version.iter_content(chunk_size):
             file.write(chunk)
             place += len(chunk)
-            percentage = str(round(place / total, 1)).ljust(5)
+            percentage = str(round(place / total, 1)*100).rjust(5)
             print('Downloading... %s' % percentage, end='\r')
         print()
         file.seek(0)
         return file
 
 
-def install(version: str):
-    archive = download_version(version)
-    print('Installing (%s)...' % archive)
+def remove_folder(tar_file):
+    tar_info = tar_file.next()
+    while tar_info:
+        tar_info.name = tar_info.name.partition('/')[2]
+        if tar_info.name:
+            yield tar_info
+        tar_info = tar_file.next()
+
+
+def install(version: str, v_info=None, chunk_size=None):
+    archive = download_version(version, v_info, chunk_size)
+    print('Installing (%s)...' % version)
     try:
         with tar(mode='r:gz', fileobj=archive) as file:
-            file.extractall()
+            file.extractall(members=remove_folder(file))
     finally:
         archive.close()
 
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='Update p2pg.')
+    parser.add_argument('-c', '--chunk-size', dest='chunk_size',
+                        type=int, help='chunk size')
+    args = parser.parse_args()
+
     print('Calculating hash...')
     _sha = calculate_hash(True)
     print('   sha: %s' % _sha)
@@ -124,7 +139,7 @@ if __name__ == '__main__':
             if v['current'] == info['current']:
                 print('Already up to date (%s)' % wanted)
             else:
-                install(wanted)
+                install(wanted, info, args.chunk_size)
         else:
             info = grab_version()
             if wanted not in info:
@@ -132,4 +147,4 @@ if __name__ == '__main__':
             if v['current'] == info[wanted][0]:
                 print('Already up to date (%s)' % wanted)
             else:
-                install(wanted)
+                install(wanted, info, args.chunk_size)
