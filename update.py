@@ -114,10 +114,10 @@ def install(version: str):
 if __name__ == '__main__':
     print('Calculating hash...')
     _sha = calculate_hash(True)
-    print('sha256::%s' % _sha)
+    print('   sha: %s' % _sha)
     if input('Update y/[n]: ') == 'y':
-        curr = v['current']
-        wanted = input('Version [%s]: ' % curr) or curr
+        v_default = v['get-version']
+        wanted = input('Version [%s]: ' % v_default).strip() or v_default
         v_latest = True if wanted == 'latest' else False
         if v_latest:
             info = grab_version(True)
@@ -127,6 +127,8 @@ if __name__ == '__main__':
                 install(wanted)
         else:
             info = grab_version()
+            if wanted not in info:
+                raise Error('requested version does not exist')
             if v['current'] == info[wanted][0]:
                 print('Already up to date (%s)' % wanted)
             else:
