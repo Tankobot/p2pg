@@ -166,7 +166,7 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
             file.write(chunk)
             place += len(chunk)
             if total:
-                percentage = str(round(place / total, 1) * 100).rjust(5)
+                percentage = str(round(place/total * 100, 1)).rjust(5)
                 print('Downloading... %s' % percentage, end='\r')
 
         wheel.stop()
