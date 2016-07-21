@@ -162,7 +162,6 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
             wheel.start('Downloading... ')
 
         for chunk in new_version.iter_content(chunk_size):
-            sleep(wait / 100)
             file.write(chunk)
             place += len(chunk)
             if total:
