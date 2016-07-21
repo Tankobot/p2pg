@@ -104,7 +104,7 @@ class Wheel:
         frames = ('-', '\\', '|', '/')
         direction = 1 if self.clockwise else -1
         while self.state:
-            print(' ', frames[place], end='\r')
+            print(self.before + frames[place], end='\r')
             place += direction
             place %= len(frames)
             sleep(1 / self.speed)
