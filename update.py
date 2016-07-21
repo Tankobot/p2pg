@@ -146,6 +146,7 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
         n_sig = v_info[version][0]
         url = v_info[version][1]
     if v['current'] != n_sig:
+        print('latest: %s' % n_sig)
         print('Downloading version (%s)' % version)
         wheel.start()
         new_version = get(url, stream=True)
@@ -194,8 +195,10 @@ def install(version: str, v_info=None, chunk_size=None):
             file.extractall(members=remove_folder(file))
     finally:
         archive.close()
-    print('Verifying installing...')
-    if calculate_hash(True) != n_sig:
+    print('Verifying installation...')
+    _sha = calculate_hash(True)
+    print('   sha: %s' % _sha)
+    if _sha != n_sig:
         print('##### Install corrupted!')
         print('##### Please try downloading p2pg again.')
     print('Finished installing.')
