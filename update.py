@@ -49,18 +49,35 @@ v = JsonHook('version.json', {
 })
 
 
+class Feed:
+    def __init__(self, pattern: str, end='\r'):
+        self.pattern = pattern
+        self.end = end
+        self.prev = 0
+
+    def print(self, data):
+        n_str = self.pattern % data
+        print(n_str + ' '*(self.prev - len(n_str)), end=self.end)
+        self.prev = len(n_str)
+
+    def close(self, msg: str):
+        print(msg + ' '*(self.prev - len(msg)))
+
+
 def calculate_hash(force=False):
     if v['current'] and not force:
         return v['current']
 
     py_files = {str(p): p for p in Path().rglob('*.py')}
     sha = sha256()
+    display = Feed('Hashing %s')
     for path in sorted(py_files):
         with py_files[path].open('rb') as file:
-            print('Hashing %s' % path)
+            display.print(path)
             sleep(wait)
             for line in file:
                 sha.update(line)
+    display.close('Finished hash.')
     h = hexlify(sha.digest()).decode('utf-8')
     v['current'] = h
     return h
@@ -178,13 +195,15 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
 
 def remove_folder(tar_file):
     tar_info = tar_file.next()
+    display = Feed('Extracting %s')
     while tar_info:
         tar_info.name = tar_info.name.partition('/')[2]
         if tar_info.name:
-            print('Extracting %s' % tar_info.name)
+            display.print(tar_info.name)
             sleep(wait)
             yield tar_info
         tar_info = tar_file.next()
+    display.close('Finished extraction.')
 
 
 def install(version: str, v_info=None, chunk_size=None):
