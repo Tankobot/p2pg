@@ -81,10 +81,10 @@ def grab_version(latest=False):
 
 
 class Wheel:
-    def __init__(self, speed=4, clockwise=True):
-        self.speed = speed
-        self.clockwise = clockwise
-        self.before = '   '
+    def __init__(self):
+        self.before = None
+        self.speed = None
+        self.clockwise = None
         self._state_lock = threading.Lock()
         self._state = False
         self._thread = None
@@ -110,10 +110,11 @@ class Wheel:
             sleep(1 / self.speed)
         print(' ' * (len(self.before) + 1), end='\r')
 
-    def start(self, before=None):
+    def start(self, before='   ', speed=4, clockwise=True):
         self.state = True
-        if before is not None:
-            self.before = before
+        self.before = before
+        self.speed = speed
+        self.clockwise = clockwise
         if self._thread:
             raise Error('wheel already started')
         else:
@@ -169,9 +170,9 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
                 print('Downloading... %s' % percentage, end='\r')
 
         wheel.stop()
-        print()
+        print('Finished downloading.')
         file.seek(0)
-        return file
+        return file, n_sig
 
 
 def remove_folder(tar_file):
@@ -186,13 +187,17 @@ def remove_folder(tar_file):
 
 
 def install(version: str, v_info=None, chunk_size=None):
-    archive = download_version(version, v_info, chunk_size)
+    archive, n_sig = download_version(version, v_info, chunk_size)
     print('Installing (%s)...' % version)
     try:
         with tar(mode='r:gz', fileobj=archive) as file:
             file.extractall(members=remove_folder(file))
     finally:
         archive.close()
+    print('Verifying installing...')
+    if calculate_hash(True) != n_sig:
+        print('##### Install corrupted!')
+        print('##### Please try downloading p2pg again.')
     print('Finished installing.')
 
 
