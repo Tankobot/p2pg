@@ -74,7 +74,6 @@ def grab_version(latest=False):
         url = 'https://tankobot.github.io' \
               '/p2pg/version.json'
     print('Getting version information...')
-    wheel = Wheel()
     wheel.start()
     result = get(url).json()
     wheel.stop()
@@ -85,6 +84,7 @@ class Wheel:
     def __init__(self, speed=4, clockwise=True):
         self.speed = speed
         self.clockwise = clockwise
+        self.before = '   '
         self._state_lock = threading.Lock()
         self._state = False
         self._thread = None
@@ -108,10 +108,12 @@ class Wheel:
             place += direction
             place %= len(frames)
             sleep(1 / self.speed)
-        print('   ', end='\r')
+        print(' ' * (len(self.before) + 1), end='\r')
 
-    def start(self):
+    def start(self, before=None):
         self.state = True
+        if before is not None:
+            self.before = before
         if self._thread:
             raise Error('wheel already started')
         else:
@@ -120,10 +122,14 @@ class Wheel:
 
     def stop(self):
         self.state = False
+        # ignore call if no thread exists
+        if not self._thread:
+            return
         self._thread.join(1)
         if self._thread.is_alive():
             raise Error('wheel did not terminate')
         else:
+            self.before = '   '
             self._thread = None
 
 
@@ -140,21 +146,30 @@ def download_version(version: str = None, v_info=None, chunk_size=128):
         url = v_info[version][1]
     if v['current'] != n_sig:
         print('Downloading version (%s)' % version)
-        wheel = Wheel()
         wheel.start()
         new_version = get(url, stream=True)
         file = TemporaryFile(buffering=0)
+
+        # handle if the file length can't be retrieved
         try:
             total = int(new_version.headers['content-length'])
         except KeyError:
-            total = 1
+            total = 0
+
         place = 0
         wheel.stop()
+        if not total:
+            wheel.start('Downloading... ')
+
         for chunk in new_version.iter_content(chunk_size):
+            sleep(wait / 100)
             file.write(chunk)
             place += len(chunk)
-            percentage = str(round(place / total, 1)*100).rjust(5)
-            print('Downloading... %s' % percentage, end='\r')
+            if total:
+                percentage = str(round(place / total, 1) * 100).rjust(5)
+                print('Downloading... %s' % percentage, end='\r')
+
+        wheel.stop()
         print()
         file.seek(0)
         return file
@@ -179,9 +194,11 @@ def install(version: str, v_info=None, chunk_size=None):
             file.extractall(members=remove_folder(file))
     finally:
         archive.close()
+    print('Finished installing.')
 
 
 wait = 0
+wheel = Wheel()
 
 
 def main():
