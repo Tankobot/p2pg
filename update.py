@@ -234,7 +234,7 @@ def main():
                         action='store_true', help='only display/write hash')
     parser.add_argument('-c', '--chunk', dest='chunk_size',
                         metavar='INT',
-                        type=int, help='chunk size')
+                        type=int, help='chunk key_size')
     parser.add_argument('-w', '--wait', dest='wait',
                         default=0, type=float,
                         help='seconds to wait between actions')

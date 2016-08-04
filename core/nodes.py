@@ -178,11 +178,11 @@ class Node:
         size += cls.msg_max
         # max msg length
         size += 2**(8 * cls.msg_max) - 1 if maximum else 8
-        # parent size
+        # parent key_size
         size += 32
-        # sha size
+        # sha key_size
         size += 32
-        # flags size
+        # flags key_size
         size += cls.flag_length
 
         return size
@@ -207,10 +207,3 @@ class NodePath:
     def remove(self, n=-1):
         key = self.path.pop(n)
         self.bag.remove(key)
-
-
-class NodeDB:
-    """Store nodes in a database."""
-
-    def __init__(self, name: str, flag='c'):
-        pass

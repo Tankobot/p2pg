@@ -6,7 +6,7 @@ from threading import Lock
 from collections import namedtuple
 
 
-Info = namedtuple('Info', 'offset size converter')
+Info = namedtuple('Info', 'offset key_size converter')
 
 
 class Error(Exception):
@@ -58,7 +58,7 @@ class BytesConverter(ConverterBase, s_type=bytes):
 class Save:
     """Store objects in static length sections.
 
-    Save objects efficiently partition storage for fixed size objects.
+    Save objects efficiently partition storage for fixed key_size objects.
 
     Example:
         >>> s = Save('example')
@@ -111,7 +111,7 @@ class Save:
         Sections are limited to one type and require a converter to function correctly.
 
         :param name: name of the section (dictionary key)
-        :param size: size in bytes of the section
+        :param size: key_size in bytes of the section
         :param s_type: object type to store in the section
         :param args: extra args to pass to the converter
         :param kwargs: extra kwargs to pass to the converter
@@ -164,7 +164,7 @@ class Save:
         data = info.converter.to_bytes(obj)
 
         if len(data) != info.size:
-            raise Error('data size != %s' % info.size)
+            raise Error('data key_size != %s' % info.size)
         self._file.seek(info.offset)
         self._file.write(data)
         self._cache[key] = obj
