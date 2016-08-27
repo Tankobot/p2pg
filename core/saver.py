@@ -248,3 +248,7 @@ class StrConverter(ConverterBase, s_type=str):
 
     def from_bytes(self, b):
         return b.rstrip(b'\x00').decode(self._encoding, self._errors)
+
+
+class MetaError(Error):
+    pass

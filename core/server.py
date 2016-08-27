@@ -1,6 +1,6 @@
 from sys import exit as end_program
 import threading
-from core.nodes import Node
+from core.node import Node
 from pathlib import PurePath
 
 

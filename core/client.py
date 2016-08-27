@@ -1,7 +1,7 @@
 """Manage the client portion."""
 
 import logging
-from core.nodes import Node
+from core.node import Node
 
 
 class ClientError(Exception):

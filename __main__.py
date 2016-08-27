@@ -1,17 +1,24 @@
 import core
-import menus
-from sys import exit as leave
+
+
+__author__ = 'Michael Bradley <michael@sigm.io>'
+__copyright__ = 'GNU General Public License V3'
 
 
 menu_items = [
     'Main Menu',
+    ['Start', leave],
+    ['Help', ],
     [
         'Options',
-        ['client', ]
+        [
+            'client',
+            ['change terminal width', menus.primary.change_terminal_width]
+        ]
     ],
     ['Exit', leave]
 ]
 
 
-menu = core.Menu(menu_items)
-menu.prompt()
+main_menu = core.Menu(menu_items)
+main_menu.prompt()

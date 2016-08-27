@@ -64,7 +64,23 @@ class Feed:
         print(msg + ' '*(self.prev - len(msg)))
 
 
-def calculate_hash(force=False):
+class Counter:
+    def __init__(self, n=0):
+        self.n = n
+
+    def __str__(self):
+        return str(self.n)
+
+    def __add__(self, other):
+        self.n += other
+        return self
+
+    def __sub__(self, other):
+        self.n -= other
+        return self
+
+
+def calculate_hash(force=False, lines: Counter = 0, chars: Counter = 0):
     if v['current'] and not force:
         return v['current']
 
@@ -76,6 +92,8 @@ def calculate_hash(force=False):
             display.print(path)
             sleep(wait)
             for line in file:
+                lines += 1
+                chars += len(line)
                 sha.update(line)
     display.close('Finished hash.')
     h = hexlify(sha.digest()).decode('utf-8')
@@ -243,7 +261,11 @@ def main():
     wait = args.wait
 
     print('Calculating hash...')
-    _sha = calculate_hash(True)
+    number_of_lines = Counter()
+    number_of_chars = Counter()
+    _sha = calculate_hash(True, number_of_lines, number_of_chars)
+    print(' lines: %s' % number_of_lines)
+    print(' chars: %s' % number_of_chars)
     print('   sha: %s' % _sha)
     if args.just_hash:
         return
