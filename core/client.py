@@ -1,7 +1,7 @@
 """Manage the p2pg client side display."""
 
 from logging import getLogger, Logger, Handler, Formatter
-from core import conf, Node
+from core import conf, Node, stop
 from weakref import ref
 from collections import namedtuple
 from textwrap import dedent
@@ -293,6 +293,7 @@ class Menu:
         Special key commands include:
             'h' | 'help': print this message
             'b': move to the previous menu
+            'q': quit p2pg
 
         :rtype: Menu | Func
 
@@ -311,6 +312,8 @@ class Menu:
         r = input('> ').strip()
         if r == 'b':
             return self._parent()
+        elif r == 'q':
+            stop()
         elif r == 'h' or r == 'help':
             clear()
             print(form_doc(self.prompt.__doc__))

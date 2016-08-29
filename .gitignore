@@ -93,6 +93,7 @@ ENV/
 
 # Save Files
 *.sve
+conf.json
 
 # Temporary Files
 *~
