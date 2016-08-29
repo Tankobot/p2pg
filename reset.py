@@ -14,12 +14,16 @@ handler.setFormatter(Formatter())
 log.addHandler(handler)
 
 
+def attempt_unlink(path, msg: str):
+    if Path(path).exists():
+        Path(path).unlink()
+    else:
+        log.warning(msg)
+
+
 def rem_config():
     log.info('removing config file...')
-    if Path('conf.json').exists():
-        Path('conf.json').unlink()
-    else:
-        log.warning('config file missing.')
+    attempt_unlink('conf.json', 'config file missing')
 
 
 def rem_data():
@@ -33,6 +37,11 @@ def rem_data():
                 path.rmdir()
             else:
                 path.unlink()
+
+
+def rem_log():
+    log.info('removing log...')
+    attempt_unlink('general.log', 'log file missing')
 
 
 def main():

@@ -1,13 +1,16 @@
-"""Manage the client portion."""
+"""Manage the p2pg client side display."""
 
-from core import conf
-from core.node import Node
+from logging import getLogger, Logger, Handler, Formatter
+from core import conf, Node
 from weakref import ref
 from collections import namedtuple
 from textwrap import dedent
 
 
-class ClientError(Exception):
+log = getLogger(__name__)
+
+
+class Error(Exception):
     pass
 
 
@@ -112,13 +115,13 @@ class Printer:
         try:
             # account for excess
             if self._height is None:
-                raise ClientError('no height limit')
+                raise Error('no height limit')
             more = 1 if excess else 0
             n_lines = len(self._lines)
             self._lines = self._lines[n_lines + more - self._height:]
         except IndexError:
             pass
-        except ClientError:
+        except Error:
             pass
 
         self._words = excess
@@ -231,6 +234,13 @@ class Controller:
 Option = namedtuple('Option', 'name action')
 
 
+menu_log = log.getChild('menu')  # type: Logger
+menu_log.setLevel(30)
+menu_handler = Handler()
+menu_handler.setFormatter(Formatter('%(name)s - %(pathname)s - %(lineno)d - %(message)s'))
+menu_log.addHandler(menu_handler)
+
+
 class Menu:
     """Navigate user through menus."""
 
@@ -267,9 +277,11 @@ class Menu:
         self._options.append(Option(menu.name, menu))
         return menu
 
-    def add_func(self, name: str, func):
+    def add_func(self, name: str, func=None):
         """Register option that points to a function."""
 
+        if func is None:
+            func = self._place_holder
         if not callable(func):
             raise TypeError('function %r not callable' % func)
         self._options.append(Option(name, func))
@@ -323,6 +335,10 @@ class Menu:
 
     # prompt on call
     __call__ = prompt
+
+    @staticmethod
+    def _place_holder():
+        menu_log.warning('place holder called')
 
 
 class Func:

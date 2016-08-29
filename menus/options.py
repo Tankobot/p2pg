@@ -1,4 +1,8 @@
-"""Option menu."""
+"""Option menu.
+
+Generally control the information in the config file.
+
+"""
 
 from core.client import Menu
 

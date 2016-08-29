@@ -1,5 +1,7 @@
-from core.client import Menu, Func
-from sys import exit
+"""Home to choose play modes and options."""
+
+from core import stop
+from core.client import Menu
 
 from .options import options
 
@@ -7,13 +9,6 @@ from .options import options
 home = Menu('Home')
 
 
-def holder():
-    """Placeholder function."""
-
-
-# Home Menu
-def play():
-    pass  # start game
-home.add_func('Play', play)
+home.add_func('Play')
 options = home.add_menu(options)
-home.add_func('Quit', Func(exit, 0))
+home.add_func('Quit', stop)
