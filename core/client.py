@@ -1,11 +1,26 @@
 """Manage the client portion."""
 
-import logging
+from core import conf
 from core.node import Node
+from weakref import ref
+from collections import namedtuple
+from textwrap import dedent
 
 
 class ClientError(Exception):
     pass
+
+
+def clear():
+    if conf.keys.clear_menu:
+        print('\n' * conf.keys.clear_len)
+
+
+def form_doc(doc):
+    i = doc.find('\n') + 1
+    header = doc[:i]
+    body = doc[i:]
+    return header + dedent(body)
 
 
 class Printer:
@@ -201,7 +216,7 @@ class Controller:
         self._top.concat(self._bottom)
         self._bottom_node = node
         self._bottom = self.default_printer()
-        self._bottom.feed(node.msg)
+        self._bottom.feed(node.msg.decode('utf-8'))
 
     def __rshift__(self, value: int):
         if value < 1:
@@ -213,74 +228,111 @@ class Controller:
         self._bottom.feed(self._nodes.pop().msg)
 
 
-class ExitMenu(Exception):
-    pass
+Option = namedtuple('Option', 'name action')
 
 
 class Menu:
-    def __init__(self, menu: list, sep=' : '):
-        self._cursor = [menu]
-        self._sep = sep
+    """Navigate user through menus."""
 
-    def _parse(self, menu):
-        pos = 0
+    def __init__(self, name: str, parent=None):
+        """Initialize menu."""
 
-        names = 0
-        for item in menu:
-            if isinstance(item, str):
-                names += 1
+        if parent and not isinstance(parent, self.__class__):
+            raise TypeError('invalid parent %r' % parent)
 
-        space = len(str(len(menu) - names - 1))
-        options = []
-        for item in menu:
-            if isinstance(item, str):
-                print(item, end='\n'*2)
-            elif isinstance(item, list):
-                extra = ' '*(space - len(str(pos)))
-                print(pos, item[0], sep=extra+self._sep)
-                options.append(item)
-                pos += 1
-            else:
-                raise TypeError('incorrect menu_items item %r' % item)
-        return options
+        self.name = name
+        self._parent = ref(parent) if parent else ref(self)
+        self._options = []  # type: list[Option]
 
-    def prompt(self, prefix='> '):
-        while True:
-            print('\n' * 50)
-            menu = self._cursor[-1]
-            options = self._parse(menu)
-            print()
+    def __iter__(self):
+        return iter(self._options)
 
-            re = input(prefix).strip().lower()
+    def add_menu(self, menu):
+        """Register option that points to a menu.
 
-            # protect against menu_items exit
-            try:
-                # check for integer situation
-                try:
-                    re = int(re)
-                    opt = options[re]
-                    if callable(opt[1]):
-                        opt[1]()
-                    else:
-                        self._cursor.append(opt)
-                except ValueError:
-                    pass
-                except IndexError:
-                    raise ClientError('incorrect menu') from None
+        The newly created menu will have the current menu as its parent.
 
-                # check for string commands
-                # go back
-                if re == 'b':
-                    if len(self._cursor) == 1:
-                        break
-                    self._cursor.pop()
-                elif re == 'h' or re == 'help':
-                    print('B to go back, enter to continue.')
-                    input()
-                else:
-                    logging.warning('Incorrect input.')
-            except ExitMenu:
-                break
+        :rtype: Menu
 
-    def reset(self):
-        self._cursor = self._cursor[0]
+        """
+
+        if isinstance(menu, self.__class__):
+            # link menu outside menu to self
+            menu._parent = ref(self)
+        elif isinstance(menu, str):
+            # create new menu
+            menu = self.__class__(menu, self)
+        else:
+            raise TypeError('menu %r is not Menu or string' % menu)
+        self._options.append(Option(menu.name, menu))
+        return menu
+
+    def add_func(self, name: str, func):
+        """Register option that points to a function."""
+
+        if not callable(func):
+            raise TypeError('function %r not callable' % func)
+        self._options.append(Option(name, func))
+        return func
+
+    def prompt(self):
+        """Display prompt for user selection.
+
+        Special key commands include:
+            'h' | 'help': print this message
+            'b': move to the previous menu
+
+        :rtype: Menu | Func
+
+        """
+
+        clear()
+
+        print(self.name)
+        print(conf.keys.menu_name_char * len(self.name))
+        print()  # add line between menu name and items
+
+        for i, opt in enumerate(self._options):
+            print(' %s: %s' % (i, opt.name))
+
+        print()  # add line between items and input
+        r = input('> ').strip()
+        if r == 'b':
+            return self._parent()
+        elif r == 'h' or r == 'help':
+            clear()
+            print(form_doc(self.prompt.__doc__))
+            input('Press enter to continue.')  # wait for the user to read
+
+        # convert response
+        try:
+            r = int(r)
+            # only accept selection from front of list
+            if r < 0:
+                raise ValueError('response too large %r' % r)
+        except ValueError:
+            # default to self
+            return self
+
+        # select action
+        try:
+            return self._options[r].action
+        except IndexError:
+            # default to self
+            return self
+
+    # prompt on call
+    __call__ = prompt
+
+
+class Func:
+    def __init__(self, func, *args, **kwargs):
+        if not callable(func):
+            raise TypeError('function %r not callable' % func)
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
+
+    def __call__(self):
+        clear()
+        return self._func(*self._args, **self._kwargs)

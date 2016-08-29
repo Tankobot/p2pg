@@ -54,19 +54,19 @@ class Node:
         self._cache = None
 
     @property
-    def msg(self):
+    def msg(self) -> bytes:
         return self._msg
 
     @property
-    def parent(self):
+    def parent(self) -> bytes:
         return self._parent if self._flag == CHILD else None
 
     @property
-    def sha(self):
+    def sha(self) -> bytes:
         return self._sha
 
     @property
-    def flag(self):
+    def flag(self) -> bytes:
         return self._flag
 
     def to_bytes(self) -> bytes:
