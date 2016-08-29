@@ -26,5 +26,5 @@ __copyright__ = 'GNU General Public License V3'
 
 def stop():
     """Run code to cleanup game before shutdown."""
-
+    log_file.close()
     exit(0)
