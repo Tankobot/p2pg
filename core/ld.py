@@ -18,31 +18,6 @@ class Error(Exception):
     pass
 
 
-class AttrDict:
-    def __init__(self, d: dict = None):
-        self._hidden_dict = d or {}
-
-    @property
-    def hidden_dictionary(self):
-        return self._hidden_dict
-
-    def __getattr__(self, key):
-        try:
-            return self._hidden_dict[key]
-        except KeyError:
-            return vars(self)[key]
-
-    def __setattr__(self, key, value):
-        s = key.startswith('_hidden') if isinstance(key, str) else False
-        if s:
-            vars(self)[key] = value
-        else:
-            self._hidden_dict[key] = value
-
-    def __dir__(self):
-        return list(set(super().__dir__()) | set(self._hidden_dict))
-
-
 class JSONDict:
     def __init__(self, file: TextIOWrapper, d: dict = None):
         self._d = d or {}
@@ -74,14 +49,13 @@ class EasyConfig:
                 json.dump({}, file)
         self._file = open(name, 'r+')
         self._json = JSONDict(self._file, defaults)
-        self._attr = AttrDict(self._json.dict)
         if defaults:
             self._json.default_update()
             self.dump()
 
     @property
-    def keys(self):
-        return self._attr
+    def dict(self):
+        return self._json.dict
 
     def dump(self):
         self._json.dump()

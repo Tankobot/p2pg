@@ -34,8 +34,8 @@ class NodeHandler:
     def add(self, node: Node):
         """Add a node to the current database."""
         save = node.to_bytes()
-        self.database[node.sha()] = save
-        self.cache[node.sha()] = node
+        self.database[node.sha] = save
+        self.cache[node.sha] = node
 
     def remove(self, location: bytes):
         try:
