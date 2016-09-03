@@ -1,4 +1,4 @@
-from logging import getLogger, DEBUG, StreamHandler, Formatter
+from logging import getLogger, DEBUG, StreamHandler, Formatter, INFO
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -12,6 +12,7 @@ log.propagate = False
 handler = StreamHandler()
 handler.setFormatter(Formatter())
 log.addHandler(handler)
+log.setLevel(INFO)
 
 
 def attempt_unlink(path, msg: str):
@@ -46,7 +47,7 @@ def rem_log():
 
 def main():
     parser = ArgumentParser(description='Resets all p2pg user files.')
-    parser.add_argument('subjects', nargs='?', default=None,
+    parser.add_argument('subjects', nargs='*', default=None,
                         help='specify region to reset')
     parser.add_argument('-p', '--possible', action='store_true',
                         help='list supported subjects')
@@ -66,7 +67,7 @@ def main():
                 print('    ' + subject[4:])
         return
 
-    print('Resetting %s...' % (args.subjects or 'all subjects'))
+    print('Resetting %s...' % (' & '.join(args.subjects) or 'all subjects'))
 
     if args.subjects:
         # evaluate only subjects
