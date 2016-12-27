@@ -15,11 +15,14 @@ class Error(Exception):
 
 
 def clear():
+    """Clear screen."""
     if conf.clear_menu:
         print('\n' * conf.clear_len)
 
 
 def form_doc(doc):
+    """Trim docstring for printing."""
+
     i = doc.find('\n') + 1
     doc = doc % info_form
     header = doc[:i]
